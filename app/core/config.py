@@ -27,10 +27,18 @@ class Settings(BaseSettings):
         description="Directory for cached models"
     )
 
-    # Model Configuration
+    # Model Configuration - Hardware-Specific
+    WHISPER_MODEL_SIZE_GPU: str = Field(
+        default="medium",
+        description="Whisper model for GPU deployment (medium recommended for Thai accuracy)"
+    )
+    WHISPER_MODEL_SIZE_CPU: str = Field(
+        default="small",
+        description="Whisper model for CPU deployment (small for balanced speed/accuracy)"
+    )
     WHISPER_MODEL_SIZE: str = Field(
-        default="base",
-        description="Whisper model size (tiny, base, small, medium, large-v2, large-v3)"
+        default="",
+        description="Manual override - if set, ignores auto-detection and uses this size"
     )
 
     # Processing Limits
@@ -70,6 +78,26 @@ class Settings(BaseSettings):
         """Ensure required directories exist."""
         Path(self.TEMP_DIR).mkdir(parents=True, exist_ok=True)
         Path(self.MODELS_DIR).mkdir(parents=True, exist_ok=True)
+
+    def get_whisper_model_size(self, device: str) -> str:
+        """
+        Get the appropriate Whisper model size based on device.
+
+        Args:
+            device: The detected device ("cuda" or "cpu")
+
+        Returns:
+            Model size string (e.g., "small", "medium")
+        """
+        # If manual override is set, use it
+        if self.WHISPER_MODEL_SIZE:
+            return self.WHISPER_MODEL_SIZE
+
+        # Otherwise, select based on hardware
+        if device == "cuda":
+            return self.WHISPER_MODEL_SIZE_GPU
+        else:
+            return self.WHISPER_MODEL_SIZE_CPU
 
 
 # Global settings instance

@@ -130,8 +130,12 @@ transcriber: Transcriber = None
 
 
 def get_transcriber() -> Transcriber:
-    """Get the global transcriber instance."""
+    """Get the global transcriber instance with hardware-appropriate model size."""
     global transcriber
     if transcriber is None:
-        transcriber = Transcriber(settings.WHISPER_MODEL_SIZE)
+        # Detect device and select appropriate model size
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model_size = settings.get_whisper_model_size(device)
+        logger.info(f"Initializing transcriber with model size '{model_size}' for device '{device}'")
+        transcriber = Transcriber(model_size)
     return transcriber

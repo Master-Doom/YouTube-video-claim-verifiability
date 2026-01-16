@@ -1,0 +1,9 @@
+# CPU-optimized dependencies
+# Use this for local development or CPU-only deployment
+
+-r requirements-base.txt
+
+# PyTorch CPU version
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchaudio==2.5.1+cpu

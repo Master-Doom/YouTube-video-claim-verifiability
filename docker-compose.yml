@@ -1,48 +1,89 @@
 version: '3.8'
 
+# Usage:
+#   CPU: docker-compose --profile cpu up -d --build
+#   GPU: docker-compose --profile gpu up -d --build
+
 services:
-  app:
+  # =============================================================================
+  # CPU Profile - For local development or CPU-only servers
+  # =============================================================================
+  app-cpu:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: youtube-transcription-service
+      args:
+        COMPUTE_TYPE: cpu
+    container_name: youtube-transcription-cpu
+    profiles: ["cpu"]
     ports:
       - "8000:8000"
     environment:
       - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
       - TEMP_DIR=/app/temp
       - MODELS_DIR=/app/models
-      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-base}
+      - WHISPER_MODEL_SIZE_GPU=${WHISPER_MODEL_SIZE_GPU:-medium}
+      - WHISPER_MODEL_SIZE_CPU=${WHISPER_MODEL_SIZE_CPU:-small}
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-}
       - MAX_VIDEO_LENGTH_MINUTES=${MAX_VIDEO_LENGTH_MINUTES:-120}
       - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,th}
       - HOST=0.0.0.0
       - PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
-      # Mount temp directory for audio files
       - ./temp:/app/temp
-      # Mount models directory to persist downloaded models
       - ./models:/app/models
-      # Optional: Mount app code for development (comment out for production)
-      # - ./app:/app/app
-      # - ./static:/app/static
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    # Uncomment the following section if you have a GPU and want to use it
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+      start_period: 120s
 
-# Optional: Add volumes for better data persistence
+  # =============================================================================
+  # GPU Profile - For GPU servers (e.g., RunPod, cloud GPU instances)
+  # =============================================================================
+  app-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        COMPUTE_TYPE: gpu
+    container_name: youtube-transcription-gpu
+    profiles: ["gpu"]
+    ports:
+      - "8000:8000"
+    environment:
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
+      - TEMP_DIR=/app/temp
+      - MODELS_DIR=/app/models
+      - WHISPER_MODEL_SIZE_GPU=${WHISPER_MODEL_SIZE_GPU:-medium}
+      - WHISPER_MODEL_SIZE_CPU=${WHISPER_MODEL_SIZE_CPU:-small}
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-}
+      - MAX_VIDEO_LENGTH_MINUTES=${MAX_VIDEO_LENGTH_MINUTES:-120}
+      - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,th}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./temp:/app/temp
+      - ./models:/app/models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
 volumes:
   temp_data:
   models_data:
