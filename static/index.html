@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Transcription Service</title>
+    <title>ClearFrame - YouTube Transcription & Fact-Check</title>
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>ClearFrame</h1>
-            <p class="subtitle">Speaker-diarized transcription with AI</p>
+            <p class="subtitle">Speaker-diarized transcription with AI-powered fact-checking</p>
         </header>
 
         <main>
@@ -36,6 +36,14 @@
                             <option value="en">English</option>
                             <option value="th">Thai</option>
                         </select>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableFactCheck" name="enableFactCheck">
+                            <span class="checkbox-text">Enable AI Fact-Checking</span>
+                            <span class="checkbox-hint">(Verifies factual claims using web search - adds processing time)</span>
+                        </label>
                     </div>
 
                     <button type="submit" id="submitBtn" class="btn btn-primary">
@@ -80,6 +88,53 @@
                 <!-- YouTube Player -->
                 <div id="videoPlayer" class="video-player"></div>
 
+                <!-- Fact-Check Results (shown only when fact-checking enabled) -->
+                <section id="factCheckSection" class="fact-check-section" style="display: none;">
+                    <!-- Disclaimer Banner -->
+                    <div class="disclaimer-banner">
+                        <strong>AI Fact-Check Disclaimer:</strong>
+                        This tool checks claim <em>verifiability</em> using web sources, not absolute truth.
+                        Results are AI-generated and may contain errors. Always verify important claims through authoritative sources.
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="fact-check-summary">
+                        <h3>Fact-Check Summary</h3>
+                        <div class="summary-stats">
+                            <div class="stat-card stat-total">
+                                <span class="stat-number" id="totalClaims">0</span>
+                                <span class="stat-label">Claims Found</span>
+                            </div>
+                            <div class="stat-card stat-supported">
+                                <span class="stat-number" id="supportedClaims">0</span>
+                                <span class="stat-label">Supported</span>
+                            </div>
+                            <div class="stat-card stat-refuted">
+                                <span class="stat-number" id="refutedClaims">0</span>
+                                <span class="stat-label">Refuted</span>
+                            </div>
+                            <div class="stat-card stat-inconclusive">
+                                <span class="stat-number" id="inconclusiveClaims">0</span>
+                                <span class="stat-label">Inconclusive</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Claims Filter -->
+                    <div class="claims-filter">
+                        <label>Filter claims:</label>
+                        <select id="claimsFilter">
+                            <option value="all">All Claims</option>
+                            <option value="supported">Supported Only</option>
+                            <option value="refuted">Refuted Only</option>
+                            <option value="inconclusive">Inconclusive Only</option>
+                        </select>
+                    </div>
+
+                    <!-- Claims List -->
+                    <div id="claimsList" class="claims-list"></div>
+                </section>
+
                 <!-- Transcript -->
                 <div class="transcript-container">
                     <div class="transcript-header">
@@ -92,7 +147,7 @@
         </main>
 
         <footer>
-            <p>Powered by FastAPI, Whisper, and pyannote.audio</p>
+            <p>Powered by FastAPI, Whisper, pyannote.audio, and Google Gemini</p>
         </footer>
     </div>
 

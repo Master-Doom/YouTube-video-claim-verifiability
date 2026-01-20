@@ -1,7 +1,7 @@
 """
 Configuration management using Pydantic Settings.
 """
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 import os
@@ -15,6 +15,44 @@ class Settings(BaseSettings):
     HUGGINGFACE_TOKEN: str = Field(
         ...,
         description="HuggingFace API token for pyannote.audio models"
+    )
+
+    # Gemini API Configuration
+    GEMINI_API_KEY: str = Field(
+        default="",
+        description="Google Gemini API key for fact-checking"
+    )
+    GEMINI_MODEL: str = Field(
+        default="gemini-1.5-flash",
+        description="Gemini model to use for claim extraction and verification"
+    )
+    GEMINI_REQUESTS_PER_MINUTE: int = Field(
+        default=15,
+        description="Gemini API rate limit (requests per minute)"
+    )
+
+    # Google Custom Search Configuration
+    GOOGLE_SEARCH_API_KEY: str = Field(
+        default="",
+        description="Google Custom Search API key"
+    )
+    GOOGLE_SEARCH_CX: str = Field(
+        default="",
+        description="Google Custom Search Engine ID"
+    )
+
+    # Fact-Checking Configuration
+    ENABLE_FACT_CHECKING: bool = Field(
+        default=True,
+        description="Enable fact-checking feature"
+    )
+    MAX_CLAIMS_TO_VERIFY: int = Field(
+        default=10,
+        description="Maximum number of claims to verify per video"
+    )
+    EVIDENCE_SOURCES_PER_CLAIM: int = Field(
+        default=5,
+        description="Number of evidence sources to fetch per claim"
     )
 
     # Directory Configuration

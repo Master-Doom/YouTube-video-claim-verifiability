@@ -1,4 +1,4 @@
-// YouTube Transcription Service - Frontend JavaScript (Async Job Mode)
+// ClearFrame - YouTube Transcription & Fact-Check Service
 
 // DOM Elements
 const form = document.getElementById('transcribeForm');
@@ -16,9 +16,20 @@ const videoPlayer = document.getElementById('videoPlayer');
 const transcript = document.getElementById('transcript');
 const copyTranscriptBtn = document.getElementById('copyTranscript');
 
+// Fact-check elements
+const factCheckSection = document.getElementById('factCheckSection');
+const totalClaims = document.getElementById('totalClaims');
+const supportedClaims = document.getElementById('supportedClaims');
+const refutedClaims = document.getElementById('refutedClaims');
+const inconclusiveClaims = document.getElementById('inconclusiveClaims');
+const claimsList = document.getElementById('claimsList');
+const claimsFilter = document.getElementById('claimsFilter');
+const enableFactCheck = document.getElementById('enableFactCheck');
+
 // State
 let currentVideoId = null;
 let currentTranscript = [];
+let currentFactCheckData = null;
 
 // Form submission handler
 form.addEventListener('submit', async (e) => {
@@ -26,13 +37,14 @@ form.addEventListener('submit', async (e) => {
 
     const youtubeUrl = document.getElementById('youtubeUrl').value.trim();
     const language = document.getElementById('language').value || null;
+    const factCheckEnabled = enableFactCheck.checked;
 
     if (!youtubeUrl) {
         showError('Please enter a YouTube URL');
         return;
     }
 
-    await transcribeVideo(youtubeUrl, language);
+    await transcribeVideo(youtubeUrl, language, factCheckEnabled);
 });
 
 // Copy transcript button handler
@@ -40,8 +52,15 @@ copyTranscriptBtn.addEventListener('click', () => {
     copyTranscriptToClipboard();
 });
 
-// Main transcription function - uses async job system
-async function transcribeVideo(youtubeUrl, language) {
+// Claims filter handler
+claimsFilter.addEventListener('change', () => {
+    if (currentFactCheckData) {
+        renderClaims(currentFactCheckData.verifications, claimsFilter.value);
+    }
+});
+
+// Main transcription function
+async function transcribeVideo(youtubeUrl, language, factCheckEnabled) {
     // Hide previous results and errors
     hideError();
     hideResults();
@@ -63,8 +82,11 @@ async function transcribeVideo(youtubeUrl, language) {
             payload.language = language;
         }
 
+        // Choose endpoint based on fact-check checkbox
+        const endpoint = factCheckEnabled ? '/api/transcribe-and-fact-check' : '/api/transcribe';
+
         // Submit job
-        const submitResponse = await fetch('/api/transcribe', {
+        const submitResponse = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -79,14 +101,14 @@ async function transcribeVideo(youtubeUrl, language) {
 
         const submitData = await submitResponse.json();
         const jobId = submitData.job_id;
-        console.log(`Job submitted: ${jobId}`);
+        console.log(`Job submitted: ${jobId} (fact-check: ${factCheckEnabled})`);
 
         // Start polling for results
         updateLoadingStep('Processing... Please wait.');
-        await pollForResults(jobId);
+        await pollForResults(jobId, factCheckEnabled);
 
     } catch (error) {
-        console.error('Transcription error:', error);
+        console.error('Processing error:', error);
         showError(error.message || 'An unexpected error occurred');
         hideLoading();
         submitBtn.disabled = false;
@@ -94,9 +116,9 @@ async function transcribeVideo(youtubeUrl, language) {
 }
 
 // Poll for job results
-async function pollForResults(jobId) {
+async function pollForResults(jobId, factCheckEnabled) {
     const pollIntervalMs = 2000; // Poll every 2 seconds
-    const maxAttempts = 300; // Max 10 minutes (300 * 2 seconds)
+    const maxAttempts = 600; // Max 20 minutes for fact-checking
     let attempts = 0;
 
     while (attempts < maxAttempts) {
@@ -116,13 +138,13 @@ async function pollForResults(jobId) {
             if (job.status === 'completed') {
                 // Success! Display results
                 currentTranscript = job.result.segments;
-                displayResults(job.result);
+                displayResults(job.result, factCheckEnabled);
                 hideLoading();
                 submitBtn.disabled = false;
                 return;
             } else if (job.status === 'failed') {
                 // Job failed
-                throw new Error(job.error || 'Transcription failed');
+                throw new Error(job.error || 'Processing failed');
             }
 
             // Still processing, wait and poll again
@@ -139,13 +161,13 @@ async function pollForResults(jobId) {
     }
 
     // Timeout
-    showError('Transcription timed out. Please try again with a shorter video.');
+    showError('Processing timed out. Please try again with a shorter video.');
     hideLoading();
     submitBtn.disabled = false;
 }
 
 // Display results
-function displayResults(data) {
+function displayResults(data, factCheckEnabled) {
     // Set video info
     videoTitle.textContent = data.video_title;
     videoDuration.textContent = formatDuration(data.duration);
@@ -164,11 +186,193 @@ function displayResults(data) {
         `;
     }
 
+    // Display fact-check results if available
+    if (factCheckEnabled && data.fact_check) {
+        displayFactCheckResults(data.fact_check);
+        factCheckSection.style.display = 'block';
+    } else {
+        factCheckSection.style.display = 'none';
+    }
+
     // Render transcript
     renderTranscript(data.segments);
 
     // Show results section
     showResults();
+}
+
+// Display fact-check results
+function displayFactCheckResults(factCheck) {
+    currentFactCheckData = factCheck;
+
+    const summary = factCheck.summary || {};
+
+    // Update summary stats
+    totalClaims.textContent = summary.total || 0;
+    supportedClaims.textContent = summary.supported || 0;
+    refutedClaims.textContent = summary.refuted || 0;
+    inconclusiveClaims.textContent = summary.inconclusive || 0;
+
+    // Render claims
+    renderClaims(factCheck.verifications || [], 'all');
+}
+
+// Render claims list
+function renderClaims(verifications, filter) {
+    claimsList.innerHTML = '';
+
+    if (!verifications || verifications.length === 0) {
+        claimsList.innerHTML = '<p class="no-claims">No factual claims were found in this video.</p>';
+        return;
+    }
+
+    const filteredClaims = filter === 'all'
+        ? verifications
+        : verifications.filter(v => v.verdict === filter);
+
+    if (filteredClaims.length === 0) {
+        claimsList.innerHTML = `<p class="no-claims">No ${filter} claims found.</p>`;
+        return;
+    }
+
+    filteredClaims.forEach((verification, index) => {
+        const claimCard = createClaimCard(verification, index);
+        claimsList.appendChild(claimCard);
+    });
+}
+
+// Create a claim card element
+function createClaimCard(verification, index) {
+    const claim = verification.claim || {};
+    const verdict = verification.verdict || 'inconclusive';
+    const confidence = verification.confidence || 0;
+
+    const card = document.createElement('div');
+    card.className = `claim-card verdict-${verdict}`;
+
+    // Header with verdict badge
+    const header = document.createElement('div');
+    header.className = 'claim-header';
+    header.innerHTML = `
+        <span class="verdict-badge ${verdict}">${verdict.toUpperCase()}</span>
+        <span class="confidence-score">Confidence: ${Math.round(confidence * 100)}%</span>
+    `;
+
+    // Claim text
+    const claimText = document.createElement('div');
+    claimText.className = 'claim-text';
+    claimText.textContent = `"${claim.claim_text || 'No claim text'}"`;
+
+    // Claim metadata
+    const meta = document.createElement('div');
+    meta.className = 'claim-meta';
+    const timestamp = formatTimestamp(claim.start_time || 0);
+    const speaker = formatSpeakerLabel(claim.speaker || 'UNKNOWN');
+    meta.innerHTML = `<span>${speaker}</span> <span class="claim-timestamp">@ ${timestamp}</span>`;
+
+    // Explanation
+    const explanation = document.createElement('div');
+    explanation.className = 'claim-explanation';
+    explanation.textContent = verification.explanation || '';
+
+    // Evidence section (collapsible)
+    const evidenceSection = createEvidenceSection(verification);
+
+    // Assemble card
+    card.appendChild(header);
+    card.appendChild(claimText);
+    card.appendChild(meta);
+    card.appendChild(explanation);
+    if (evidenceSection) {
+        card.appendChild(evidenceSection);
+    }
+
+    return card;
+}
+
+// Create evidence section
+function createEvidenceSection(verification) {
+    const supporting = verification.supporting_evidence || [];
+    const counter = verification.counter_evidence || [];
+
+    if (supporting.length === 0 && counter.length === 0) {
+        return null;
+    }
+
+    const section = document.createElement('div');
+    section.className = 'evidence-section';
+
+    // Toggle button
+    const toggle = document.createElement('button');
+    toggle.className = 'evidence-toggle';
+    toggle.textContent = `Show Evidence (${supporting.length + counter.length} sources)`;
+    toggle.onclick = () => {
+        const content = section.querySelector('.evidence-content');
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+        toggle.textContent = isHidden
+            ? `Hide Evidence (${supporting.length + counter.length} sources)`
+            : `Show Evidence (${supporting.length + counter.length} sources)`;
+    };
+
+    // Evidence content (hidden by default)
+    const content = document.createElement('div');
+    content.className = 'evidence-content';
+    content.style.display = 'none';
+
+    // Supporting evidence
+    if (supporting.length > 0) {
+        const supportingDiv = document.createElement('div');
+        supportingDiv.className = 'evidence-group supporting';
+        supportingDiv.innerHTML = `<h5>Supporting Evidence</h5>`;
+        supporting.forEach(e => {
+            supportingDiv.appendChild(createEvidenceItem(e, 'supporting'));
+        });
+        content.appendChild(supportingDiv);
+    }
+
+    // Counter evidence
+    if (counter.length > 0) {
+        const counterDiv = document.createElement('div');
+        counterDiv.className = 'evidence-group counter';
+        counterDiv.innerHTML = `<h5>Counter Evidence</h5>`;
+        counter.forEach(e => {
+            counterDiv.appendChild(createEvidenceItem(e, 'counter'));
+        });
+        content.appendChild(counterDiv);
+    }
+
+    section.appendChild(toggle);
+    section.appendChild(content);
+
+    return section;
+}
+
+// Create evidence item
+function createEvidenceItem(evidence, type) {
+    const item = document.createElement('div');
+    item.className = `evidence-item ${type}`;
+
+    const url = evidence.source_url || '#';
+    const title = evidence.source_title || extractDomain(url);
+    const quote = evidence.quote || 'No quote available';
+
+    item.innerHTML = `
+        <a href="${url}" target="_blank" rel="noopener noreferrer" class="evidence-source">${title}</a>
+        <p class="evidence-quote">"${quote}"</p>
+    `;
+
+    return item;
+}
+
+// Extract domain from URL
+function extractDomain(url) {
+    try {
+        const domain = new URL(url).hostname;
+        return domain.replace('www.', '');
+    } catch {
+        return url;
+    }
 }
 
 // Render transcript segments
@@ -261,8 +465,7 @@ function formatDuration(seconds) {
 function formatTimestamp(seconds) {
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 10);
-    return `${minutes}:${secs.toString().padStart(2, '0')}.${ms}`;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
 function formatSpeakerLabel(speaker) {
@@ -328,7 +531,8 @@ function showResults() {
 
 function hideResults() {
     resultsSection.style.display = 'none';
+    factCheckSection.style.display = 'none';
 }
 
 // Initialize
-console.log('YouTube Transcription Service initialized (async job mode)');
+console.log('ClearFrame - YouTube Transcription & Fact-Check Service initialized');

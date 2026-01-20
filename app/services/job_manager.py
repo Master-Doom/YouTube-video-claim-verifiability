@@ -21,12 +21,20 @@ class JobStatus(str, Enum):
 class Job:
     """Represents a transcription job."""
 
-    def __init__(self, job_id: str, youtube_url: str, language: Optional[str] = None):
+    def __init__(
+        self,
+        job_id: str,
+        youtube_url: str,
+        language: Optional[str] = None,
+        fact_check: bool = False
+    ):
         self.job_id = job_id
         self.youtube_url = youtube_url
         self.language = language
+        self.fact_check = fact_check  # Whether to include fact-checking
         self.status = JobStatus.PENDING
         self.progress = "Queued"
+        self.phase = "transcription"  # Current phase: "transcription" or "fact_checking"
         self.result: Optional[Dict[str, Any]] = None
         self.error: Optional[str] = None
         self.created_at = datetime.utcnow()
@@ -38,6 +46,8 @@ class Job:
             "job_id": self.job_id,
             "status": self.status.value,
             "progress": self.progress,
+            "phase": self.phase,
+            "fact_check": self.fact_check,
             "created_at": self.created_at.isoformat(),
         }
 
@@ -58,11 +68,17 @@ class JobManager:
     def __init__(self):
         self.jobs: Dict[str, Job] = {}
 
-    def create_job(self, youtube_url: str, language: Optional[str] = None) -> str:
+    def create_job(
+        self,
+        youtube_url: str,
+        language: Optional[str] = None,
+        fact_check: bool = False
+    ) -> str:
         """Create a new job and return its ID."""
         job_id = str(uuid.uuid4())[:8]
-        self.jobs[job_id] = Job(job_id, youtube_url, language)
-        logger.info(f"Created job {job_id} for URL: {youtube_url}")
+        self.jobs[job_id] = Job(job_id, youtube_url, language, fact_check)
+        job_type = "fact-check" if fact_check else "transcription"
+        logger.info(f"Created {job_type} job {job_id} for URL: {youtube_url}")
         return job_id
 
     def get_job(self, job_id: str) -> Optional[Job]:
@@ -75,10 +91,12 @@ class JobManager:
             job.status = JobStatus.PROCESSING
             logger.info(f"Job {job_id} started processing")
 
-    def update_progress(self, job_id: str, progress: str):
+    def update_progress(self, job_id: str, progress: str, phase: Optional[str] = None):
         """Update job progress message."""
         if job := self.jobs.get(job_id):
             job.progress = progress
+            if phase:
+                job.phase = phase
             logger.debug(f"Job {job_id} progress: {progress}")
 
     def complete_job(self, job_id: str, result: Dict[str, Any]):

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-from app.api.routes import health, transcribe, jobs
+from app.api.routes import health, transcribe, jobs, fact_check
 from app.services.model_loader import initialize_models
 from app.utils.logger import setup_logger
 from app.core.config import settings
@@ -44,9 +44,9 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="YouTube Transcription Service",
-    description="Speaker-diarized transcription service for YouTube videos",
-    version="1.0.0",
+    title="YouTube Transcription & Fact-Check Service",
+    description="Speaker-diarized transcription and AI-powered fact-checking for YouTube videos",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -70,6 +70,11 @@ app.include_router(
     jobs.router,
     prefix="/api",
     tags=["Jobs"]
+)
+app.include_router(
+    fact_check.router,
+    prefix="/api",
+    tags=["Fact-Check"]
 )
 
 # Mount static files
