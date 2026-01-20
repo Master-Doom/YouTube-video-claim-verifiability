@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-from app.api.routes import health, transcribe
+from app.api.routes import health, transcribe, jobs
 from app.services.model_loader import initialize_models
 from app.utils.logger import setup_logger
 from app.core.config import settings
@@ -65,6 +65,11 @@ app.include_router(
     transcribe.router,
     prefix="/api",
     tags=["Transcription"]
+)
+app.include_router(
+    jobs.router,
+    prefix="/api",
+    tags=["Jobs"]
 )
 
 # Mount static files

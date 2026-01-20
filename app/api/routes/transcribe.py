@@ -1,10 +1,12 @@
 """
 Transcription API endpoint.
 """
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.models.schemas import TranscribeRequest, TranscribeResponse, SpeakerSegment, ErrorResponse
 from app.pipelines.orchestrator import process_youtube_video
 from app.api.dependencies import check_service_ready
+from app.services.job_manager import job_manager, JobStatus
 from app.utils.logger import setup_logger
 from app.core.constants import ERROR_INVALID_URL, ERROR_PROCESSING_FAILED
 
@@ -15,11 +17,9 @@ router = APIRouter()
 
 @router.post(
     "/transcribe",
-    response_model=TranscribeResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid request"},
         503: {"model": ErrorResponse, "description": "Service unavailable"},
-        500: {"model": ErrorResponse, "description": "Processing failed"}
     }
 )
 async def transcribe_video(
@@ -27,77 +27,85 @@ async def transcribe_video(
     _: None = Depends(check_service_ready)
 ):
     """
-    Transcribe a YouTube video with speaker diarization.
+    Submit a YouTube video for transcription with speaker diarization.
 
-    This endpoint:
-    1. Downloads audio from the provided YouTube URL
-    2. Performs speaker diarization to identify different speakers
-    3. Transcribes the audio with language detection
-    4. Aligns speaker labels with transcript segments
+    This endpoint returns immediately with a job_id. Use GET /api/jobs/{job_id}
+    to poll for status and results.
 
     Args:
         request: TranscribeRequest containing youtube_url and optional language
 
     Returns:
-        TranscribeResponse with video metadata and speaker-labeled transcript segments
-
-    Raises:
-        HTTPException: If validation fails or processing encounters an error
+        Job ID and initial status
     """
+    logger.info(f"Received transcription request for URL: {request.youtube_url}")
+
+    # Create job
+    job_id = job_manager.create_job(request.youtube_url, request.language)
+
+    # Start processing in background
+    asyncio.create_task(process_transcription_job(job_id))
+
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Job submitted. Poll GET /api/jobs/{job_id} for status."
+    }
+
+
+async def process_transcription_job(job_id: str):
+    """
+    Background task to process a transcription job.
+
+    Args:
+        job_id: The job ID to process
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        logger.error(f"Job {job_id} not found")
+        return
+
     try:
-        logger.info(f"Received transcription request for URL: {request.youtube_url}")
+        # Mark as processing
+        job_manager.set_processing(job_id)
+        job_manager.update_progress(job_id, "Downloading and extracting audio...")
 
         # Process the video
         result = await process_youtube_video(
-            youtube_url=request.youtube_url,
-            language=request.language
+            youtube_url=job.youtube_url,
+            language=job.language
         )
 
-        # Convert segments to response model
+        # Convert to response format
         segments = [
-            SpeakerSegment(
-                speaker=seg['speaker'],
-                start=seg['start'],
-                end=seg['end'],
-                text=seg['text']
-            )
+            {
+                "speaker": seg['speaker'],
+                "start": seg['start'],
+                "end": seg['end'],
+                "text": seg['text']
+            }
             for seg in result['segments']
         ]
 
-        response = TranscribeResponse(
-            video_title=result['video_title'],
-            duration=result['duration'],
-            language=result['language'],
-            segments=segments,
-            total_speakers=result['total_speakers']
-        )
+        response_data = {
+            "video_title": result['video_title'],
+            "duration": result['duration'],
+            "language": result['language'],
+            "segments": segments,
+            "total_speakers": result['total_speakers']
+        }
+
+        job_manager.complete_job(job_id, response_data)
 
         logger.info(
             f"Successfully processed video: {result['video_title']} "
             f"({len(segments)} segments, {result['total_speakers']} speakers)"
         )
 
-        return response
-
     except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        logger.error(f"Validation error for job {job_id}: {e}")
+        job_manager.fail_job(job_id, str(e))
+
     except Exception as e:
-        logger.error(f"Processing error: {e}")
-
-        # Determine appropriate error code
-        error_message = str(e)
-        if ERROR_INVALID_URL in error_message:
-            status_code = status.HTTP_400_BAD_REQUEST
-        elif "duration exceeds" in error_message.lower():
-            status_code = status.HTTP_400_BAD_REQUEST
-        else:
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-
-        raise HTTPException(
-            status_code=status_code,
-            detail=error_message
-        )
+        logger.error(f"Processing error for job {job_id}: {e}")
+        job_manager.fail_job(job_id, str(e))

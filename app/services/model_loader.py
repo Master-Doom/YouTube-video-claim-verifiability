@@ -79,9 +79,14 @@ class ModelLoader:
         Returns:
             Dictionary with model status information
         """
+        # Get actual model size from transcriber instance
+        whisper_model_size = None
+        if self.whisper_loaded and self.transcriber:
+            whisper_model_size = self.transcriber.model_size
+
         return {
             'whisper_loaded': self.whisper_loaded,
-            'whisper_model_size': settings.WHISPER_MODEL_SIZE if self.whisper_loaded else None,
+            'whisper_model_size': whisper_model_size,
             'diarization_loaded': self.diarization_loaded,
             'models_loaded': self.whisper_loaded and self.diarization_loaded
         }

@@ -1,4 +1,4 @@
-// YouTube Transcription Service - Frontend JavaScript
+// YouTube Transcription Service - Frontend JavaScript (Async Job Mode)
 
 // DOM Elements
 const form = document.getElementById('transcribeForm');
@@ -40,12 +40,12 @@ copyTranscriptBtn.addEventListener('click', () => {
     copyTranscriptToClipboard();
 });
 
-// Main transcription function
+// Main transcription function - uses async job system
 async function transcribeVideo(youtubeUrl, language) {
     // Hide previous results and errors
     hideError();
     hideResults();
-    showLoading('Initializing...');
+    showLoading('Submitting job...');
 
     // Disable submit button
     submitBtn.disabled = true;
@@ -63,11 +63,8 @@ async function transcribeVideo(youtubeUrl, language) {
             payload.language = language;
         }
 
-        // Update loading message
-        updateLoadingStep('Downloading and extracting audio...');
-
-        // Make API request
-        const response = await fetch('/api/transcribe', {
+        // Submit job
+        const submitResponse = await fetch('/api/transcribe', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -75,27 +72,76 @@ async function transcribeVideo(youtubeUrl, language) {
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Transcription failed');
+        if (!submitResponse.ok) {
+            const errorData = await submitResponse.json();
+            throw new Error(errorData.detail || 'Failed to submit job');
         }
 
-        updateLoadingStep('Processing complete!');
+        const submitData = await submitResponse.json();
+        const jobId = submitData.job_id;
+        console.log(`Job submitted: ${jobId}`);
 
-        // Parse response
-        const data = await response.json();
-        currentTranscript = data.segments;
-
-        // Display results
-        displayResults(data);
+        // Start polling for results
+        updateLoadingStep('Processing... Please wait.');
+        await pollForResults(jobId);
 
     } catch (error) {
         console.error('Transcription error:', error);
         showError(error.message || 'An unexpected error occurred');
-    } finally {
         hideLoading();
         submitBtn.disabled = false;
     }
+}
+
+// Poll for job results
+async function pollForResults(jobId) {
+    const pollIntervalMs = 2000; // Poll every 2 seconds
+    const maxAttempts = 300; // Max 10 minutes (300 * 2 seconds)
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+        try {
+            const response = await fetch(`/api/jobs/${jobId}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to get job status');
+            }
+
+            const job = await response.json();
+            console.log(`Job ${jobId} status: ${job.status}, progress: ${job.progress}`);
+
+            // Update loading message with progress
+            updateLoadingStep(job.progress || 'Processing...');
+
+            if (job.status === 'completed') {
+                // Success! Display results
+                currentTranscript = job.result.segments;
+                displayResults(job.result);
+                hideLoading();
+                submitBtn.disabled = false;
+                return;
+            } else if (job.status === 'failed') {
+                // Job failed
+                throw new Error(job.error || 'Transcription failed');
+            }
+
+            // Still processing, wait and poll again
+            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+            attempts++;
+
+        } catch (error) {
+            console.error('Polling error:', error);
+            showError(error.message || 'Error checking job status');
+            hideLoading();
+            submitBtn.disabled = false;
+            return;
+        }
+    }
+
+    // Timeout
+    showError('Transcription timed out. Please try again with a shorter video.');
+    hideLoading();
+    submitBtn.disabled = false;
 }
 
 // Display results
@@ -285,4 +331,4 @@ function hideResults() {
 }
 
 // Initialize
-console.log('YouTube Transcription Service initialized');
+console.log('YouTube Transcription Service initialized (async job mode)');
