@@ -1,6 +1,7 @@
 """
 YouTube audio extraction pipeline.
 """
+import os
 import yt_dlp
 from typing import Tuple, Dict
 from app.utils.logger import setup_logger
@@ -56,10 +57,10 @@ class AudioExtractor:
                     '-ar', str(16000),  # Sample rate
                     '-ac', '1',  # Mono
                 ],
-                # Enhanced options for YouTube compatibility
+                # Enhanced options for YouTube compatibility (iOS client works best for data center IPs)
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['android', 'web'],  # Use multiple clients for better success rate
+                        'player_client': ['ios', 'android', 'web'],  # iOS first for data center IPs (RunPod, etc.)
                         'skip': ['hls', 'dash'],  # Skip problematic streaming formats
                     }
                 },
@@ -70,6 +71,11 @@ class AudioExtractor:
                     'Sec-Fetch-Mode': 'navigate',
                 },
             }
+
+            # Add cookies file if configured (for bypassing bot detection)
+            if settings.YOUTUBE_COOKIES_PATH and os.path.exists(settings.YOUTUBE_COOKIES_PATH):
+                ydl_opts['cookiefile'] = settings.YOUTUBE_COOKIES_PATH
+                logger.info(f"Using YouTube cookies from: {settings.YOUTUBE_COOKIES_PATH}")
 
             # Download and extract metadata
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

@@ -55,6 +55,12 @@ class Settings(BaseSettings):
         description="Number of evidence sources to fetch per claim"
     )
 
+    # YouTube Configuration
+    YOUTUBE_COOKIES_PATH: str = Field(
+        default="",
+        description="Path to YouTube cookies.txt file for authentication (bypasses bot detection)"
+    )
+
     # Directory Configuration
     TEMP_DIR: str = Field(
         default="./temp",
