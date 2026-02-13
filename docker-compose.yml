@@ -30,6 +30,16 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Fact-checking configuration
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
+      - GEMINI_REQUESTS_PER_MINUTE=${GEMINI_REQUESTS_PER_MINUTE:-15}
+      - GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY}
+      - GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX}
+      - ENABLE_FACT_CHECKING=${ENABLE_FACT_CHECKING:-true}
+      - MAX_CLAIMS_TO_VERIFY=${MAX_CLAIMS_TO_VERIFY:-10}
+      - EVIDENCE_SOURCES_PER_CLAIM=${EVIDENCE_SOURCES_PER_CLAIM:-5}
+      - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
     volumes:
       - ./temp:/app/temp
       - ./models:/app/models
@@ -66,6 +76,16 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Fact-checking configuration
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
+      - GEMINI_REQUESTS_PER_MINUTE=${GEMINI_REQUESTS_PER_MINUTE:-15}
+      - GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY}
+      - GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX}
+      - ENABLE_FACT_CHECKING=${ENABLE_FACT_CHECKING:-true}
+      - MAX_CLAIMS_TO_VERIFY=${MAX_CLAIMS_TO_VERIFY:-10}
+      - EVIDENCE_SOURCES_PER_CLAIM=${EVIDENCE_SOURCES_PER_CLAIM:-5}
+      - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
     volumes:
       - ./temp:/app/temp
       - ./models:/app/models
