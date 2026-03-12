@@ -11,55 +11,60 @@ logger = setup_logger(__name__)
 
 
 CLAIM_EXTRACTION_PROMPT = """
-You are a fact-checking assistant. Analyze this transcript and extract FACTUAL CLAIMS that can be verified.
+You are a scientific fact-checking assistant. Analyze this transcript and extract ONLY SCIENTIFIC CLAIMS that can be verified through scientific literature and research.
 
 TRANSCRIPT:
 {transcript}
 
 RULES FOR EXTRACTION:
-1. Extract ONLY factual claims that can be objectively verified
+1. Extract ONLY scientific factual claims that can be objectively verified
 2. Include claims about:
-   - Historical events (with dates, years, or time periods)
-   - Statistics, numbers, and quantities
-   - Scientific facts and research findings
-   - Current events and factual statements
-   - Quotes attributed to specific people
-   - Geographic or demographic facts
+   - Biology and medicine (e.g., "Vitamin C boosts the immune system", "COVID-19 is caused by SARS-CoV-2")
+   - Physics and chemistry (e.g., "Water boils at 100 degrees Celsius at sea level")
+   - Environmental science and climate (e.g., "Global temperatures have risen by 1.1 degrees since pre-industrial times")
+   - Health and nutrition (e.g., "Eating red meat increases cancer risk")
+   - Technology and engineering claims with scientific basis
+   - Research findings and study results (e.g., "A study showed that...")
+   - Established scientific facts and consensus
 
 3. EXCLUDE (do not extract):
    - Opinions ("I think", "I believe", "in my opinion")
    - Predictions ("will happen", "going to", "might")
    - Subjective statements ("beautiful", "good", "bad", "amazing")
    - Questions
-   - Personal anecdotes without verifiable facts
-   - Vague statements without specific details
+   - Personal anecdotes without verifiable scientific facts
+   - Vague statements without specific scientific details
    - Rhetorical statements
+   - Historical events (unless they are scientific discoveries)
+   - Statistics about politics, economics, or social trends (non-scientific)
+   - Quotes or attributions (unless quoting scientific findings)
+   - Geographic or demographic facts (non-scientific)
 
 4. Make each claim:
    - Self-contained (understandable without context)
-   - Specific with verifiable details
+   - Specific with verifiable scientific details
    - In the same language as the original statement
 
-5. Generate a search query that would help verify each claim
+5. Generate a search query that would help verify each claim using scientific sources
 
 OUTPUT FORMAT (JSON):
 {{
     "claims": [
         {{
-            "claim_text": "The exact factual claim as stated or slightly paraphrased for clarity",
+            "claim_text": "The exact scientific claim as stated or slightly paraphrased for clarity",
             "speaker": "SPEAKER_XX",
             "start_time": 0.0,
             "end_time": 5.0,
-            "claim_type": "statistic|historical|scientific|current_event|quote|geographic",
+            "claim_type": "scientific",
             "confidence": 0.85,
-            "search_query": "Effective search query to verify this claim",
+            "search_query": "Effective search query to verify this scientific claim",
             "key_entities": ["entity1", "entity2"]
         }}
     ]
 }}
 
-Return at most {max_claims} of the most significant and verifiable claims.
-Prioritize claims with specific numbers, dates, or names that are easier to verify.
+Return at most {max_claims} of the most significant and verifiable scientific claims.
+Prioritize claims with specific measurements, named scientific concepts, or research references that are easier to verify.
 """
 
 

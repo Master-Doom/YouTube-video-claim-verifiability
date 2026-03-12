@@ -10,7 +10,8 @@ logger = setup_logger(__name__)
 
 
 VERIFICATION_PROMPT = """
-You are an expert fact-checker. Your task is to verify the following claim using the provided evidence sources.
+You are an expert scientific fact-checker with expertise in evaluating scientific claims against research evidence.
+Your task is to verify the following scientific claim using the provided evidence sources.
 
 CLAIM TO VERIFY:
 "{claim_text}"
@@ -28,16 +29,18 @@ VERIFICATION INSTRUCTIONS:
 3. Look for information that CONTRADICTS the claim
 4. Consider the reliability of each source (score shown)
 5. Determine if there is consensus or conflicting information
-6. Be conservative - if uncertain, mark as "inconclusive"
+6. Prioritize evidence from peer-reviewed journals, institutional sources (.edu, .gov), and established scientific organizations
+7. Consider the scientific consensus, not just individual studies
+8. Be conservative - if uncertain, mark as "inconclusive"
 
 VERDICT DEFINITIONS:
-- "supported": Multiple reliable sources confirm the claim's accuracy
-- "refuted": Reliable sources contradict or disprove the claim
-- "inconclusive": Insufficient evidence, conflicting sources, or claim cannot be verified
+- "supported": Scientific evidence from reliable sources confirms the claim's accuracy
+- "refuted": Reliable scientific sources contradict or disprove the claim
+- "inconclusive": Insufficient scientific evidence, conflicting sources, or claim cannot be verified
 
 CONFIDENCE SCORING:
-- 0.9-1.0: Very strong evidence with multiple high-reliability sources agreeing
-- 0.7-0.9: Good evidence from reliable sources
+- 0.9-1.0: Very strong evidence with multiple high-reliability scientific sources agreeing
+- 0.7-0.9: Good evidence from reliable scientific sources
 - 0.5-0.7: Some evidence but limited sources or mixed reliability
 - 0.3-0.5: Weak evidence or conflicting sources
 - 0.0-0.3: Very limited evidence available
@@ -46,7 +49,7 @@ OUTPUT FORMAT (JSON):
 {{
     "verdict": "supported|refuted|inconclusive",
     "confidence": 0.75,
-    "explanation": "Clear explanation of the verdict in 2-3 sentences. What evidence supports or refutes the claim?",
+    "explanation": "Clear explanation of the verdict in 2-3 sentences. What scientific evidence supports or refutes the claim?",
     "supporting_evidence": [
         {{
             "source_url": "URL of the supporting source",

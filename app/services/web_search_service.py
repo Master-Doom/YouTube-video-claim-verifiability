@@ -1,5 +1,5 @@
 """
-Web search service for evidence retrieval using Google Custom Search API.
+Web search service for evidence retrieval using SerpAPI.
 """
 import asyncio
 import aiohttp
@@ -63,16 +63,15 @@ LOW_RELIABILITY_DOMAINS = [
 
 
 class WebSearchService:
-    """Service for Google Custom Search API and content fetching."""
+    """Service for SerpAPI web search and content fetching."""
 
     def __init__(self):
-        self.api_key = settings.GOOGLE_SEARCH_API_KEY
-        self.cx = settings.GOOGLE_SEARCH_CX
-        self.base_url = "https://www.googleapis.com/customsearch/v1"
+        self.api_key = settings.SERPAPI_API_KEY
+        self.base_url = "https://serpapi.com/search.json"
 
     def is_configured(self) -> bool:
-        """Check if Google Search API is configured."""
-        return bool(self.api_key and self.cx)
+        """Check if SerpAPI is configured."""
+        return bool(self.api_key)
 
     async def search(
         self,
@@ -80,7 +79,7 @@ class WebSearchService:
         num_results: int = 5
     ) -> List[Dict]:
         """
-        Search using Google Custom Search API.
+        Search using SerpAPI.
 
         Args:
             query: Search query string
@@ -90,14 +89,14 @@ class WebSearchService:
             List of search results with url, title, snippet, reliability_score
         """
         if not self.is_configured():
-            logger.warning("⚠️ Google Search API not configured, skipping search")
+            logger.warning("⚠️ SerpAPI not configured, skipping search")
             return []
 
         params = {
-            'key': self.api_key,
-            'cx': self.cx,
+            'api_key': self.api_key,
+            'engine': 'google',
             'q': query,
-            'num': min(num_results, 10)
+            'num': min(num_results, 10),
         }
 
         try:
@@ -109,13 +108,18 @@ class WebSearchService:
                 ) as response:
                     if response.status != 200:
                         error_text = await response.text()
-                        logger.error(f"Search API error {response.status}: {error_text[:200]}")
+                        logger.error(f"SerpAPI error {response.status}: {error_text[:200]}")
                         return []
 
                     data = await response.json()
 
+            # SerpAPI may return 200 with an error body
+            if 'error' in data:
+                logger.error(f"SerpAPI error: {data['error']}")
+                return []
+
             results = []
-            for item in data.get('items', []):
+            for item in data.get('organic_results', []):
                 url = item.get('link', '')
                 reliability = self._get_reliability_score(url)
 
@@ -163,8 +167,8 @@ class WebSearchService:
             for key, score in SOURCE_RELIABILITY.items():
                 if key == 'default':
                     continue
-                # Check if it's a TLD match or domain match
-                if domain.endswith(f'.{key}') or domain == key or key in domain:
+                # Exact domain match or TLD/subdomain match
+                if domain == key or domain.endswith(f'.{key}'):
                     return score
 
             return SOURCE_RELIABILITY['default']

@@ -2,7 +2,7 @@
 Fact-checking orchestrator that coordinates the full pipeline.
 """
 from typing import List, Dict, Any, Optional, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.pipelines.claim_extraction import extract_claims
 from app.pipelines.evidence_retrieval import retrieve_evidence_batch
@@ -17,17 +17,17 @@ logger = setup_logger(__name__)
 
 FACT_CHECK_DISCLAIMER = """
 ⚠️ IMPORTANT DISCLAIMER:
-This fact-checking tool analyzes claim VERIFIABILITY using web sources. It does not determine absolute truth.
+This tool analyzes the VERIFIABILITY of SCIENTIFIC CLAIMS using web sources and scientific literature. It does not determine absolute truth.
 
-• "Supported" = Found confirming evidence in multiple reliable sources
-• "Refuted" = Found contradicting evidence in reliable sources
-• "Inconclusive" = Insufficient or conflicting evidence
+• "Supported" = Found confirming evidence in reliable scientific sources
+• "Refuted" = Found contradicting evidence in reliable scientific sources
+• "Inconclusive" = Insufficient or conflicting scientific evidence
 
 This is an AI-powered research tool. Always:
-✓ Verify important claims through authoritative sources
-✓ Consider context and nuance
+✓ Verify important scientific claims through peer-reviewed literature
+✓ Consider context, methodology, and scientific consensus
 ✓ Understand that sources may be incomplete or biased
-✓ Use this as a starting point, not a final verdict
+✓ Use this as a starting point for scientific inquiry, not a final verdict
 """
 
 
@@ -75,7 +75,7 @@ class FactCheckingOrchestrator:
             - disclaimer: Legal/ethical disclaimer
             - processing_time_seconds: Total processing time
         """
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
 
         if max_claims is None:
             max_claims = settings.MAX_CLAIMS_TO_VERIFY
@@ -92,7 +92,7 @@ class FactCheckingOrchestrator:
             return self._create_error_response("Gemini API key not configured. Please set GEMINI_API_KEY.")
 
         # Step 1: Extract claims
-        update_progress("Step 1/3: Extracting factual claims from transcript...")
+        update_progress("Step 1/3: Extracting scientific claims from transcript...")
 
         try:
             claims = await extract_claims(segments, max_claims)
@@ -101,10 +101,10 @@ class FactCheckingOrchestrator:
             return self._create_error_response(f"Failed to extract claims: {str(e)}")
 
         if not claims:
-            logger.info("ℹ️ No verifiable claims found in transcript")
-            return self._create_empty_response("No verifiable factual claims were found in the transcript.")
+            logger.info("ℹ️ No verifiable scientific claims found in transcript")
+            return self._create_empty_response("No verifiable scientific claims were found in the transcript.")
 
-        update_progress(f"Found {len(claims)} claims. Step 2/3: Searching for evidence...")
+        update_progress(f"Found {len(claims)} scientific claims. Step 2/3: Searching for evidence...")
 
         # Step 2: Retrieve evidence (parallel)
         if prereqs['web_search']:
@@ -133,7 +133,7 @@ class FactCheckingOrchestrator:
         summary = self._calculate_summary(verifications)
 
         # Calculate processing time
-        processing_time = (datetime.utcnow() - self.start_time).total_seconds()
+        processing_time = (datetime.now(timezone.utc) - self.start_time).total_seconds()
 
         update_progress("Fact-checking complete!")
 
@@ -188,7 +188,7 @@ class FactCheckingOrchestrator:
         """Create a response when no claims are found."""
         processing_time = 0
         if self.start_time:
-            processing_time = (datetime.utcnow() - self.start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - self.start_time).total_seconds()
 
         return {
             'claims_found': 0,
@@ -215,7 +215,7 @@ class FactCheckingOrchestrator:
         """Create a response when an error occurs."""
         processing_time = 0
         if self.start_time:
-            processing_time = (datetime.utcnow() - self.start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - self.start_time).total_seconds()
 
         return {
             'claims_found': 0,

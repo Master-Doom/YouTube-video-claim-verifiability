@@ -13,7 +13,7 @@ logger = setup_logger(__name__)
 
 def generate_search_queries(claim: Dict) -> List[str]:
     """
-    Generate effective search queries for a claim.
+    Generate effective search queries for a scientific claim.
 
     Args:
         claim: Claim dictionary with claim_text, claim_type, key_entities
@@ -23,7 +23,6 @@ def generate_search_queries(claim: Dict) -> List[str]:
     """
     queries = []
     claim_text = claim.get('claim_text', '')
-    claim_type = claim.get('claim_type', 'unknown')
     search_query = claim.get('search_query', '')
     entities = claim.get('key_entities', [])
 
@@ -31,29 +30,17 @@ def generate_search_queries(claim: Dict) -> List[str]:
     if search_query and search_query != claim_text:
         queries.append(search_query)
 
-    # Add claim-type specific queries
-    if claim_type == 'statistic':
-        # For statistics, add keywords for official data
-        queries.append(f"{claim_text} official statistics data")
-    elif claim_type == 'historical':
-        # For historical claims, focus on the event
-        queries.append(f"{claim_text} history")
-    elif claim_type == 'scientific':
-        # For scientific claims, look for research
-        queries.append(f"{claim_text} research study")
-    elif claim_type == 'quote':
-        # For quotes, search for the quote attribution
-        if entities:
-            queries.append(f'"{claim_text}" {entities[0]}')
-        else:
-            queries.append(f'"{claim_text}"')
+    # Scientific-specific query
+    queries.append(f"{claim_text} scientific research study")
+
+    # Entity-focused academic query if entities exist
+    if entities:
+        entity_str = " ".join(entities[:3])
+        queries.append(f"{entity_str} peer-reviewed research")
 
     # Always add the plain claim as a fallback
     if claim_text not in queries:
         queries.append(claim_text)
-
-    # Add fact-check specific query
-    queries.append(f"{claim_text} fact check")
 
     return queries[:3]  # Limit to 3 queries
 

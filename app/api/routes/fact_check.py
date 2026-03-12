@@ -194,7 +194,7 @@ async def fact_check_status():
     Check the status and availability of fact-checking services.
 
     Returns:
-        Status of Gemini API and Google Search API
+        Status of Gemini API and SerpAPI
     """
     from app.services.web_search_service import web_search_service
 
@@ -203,6 +203,7 @@ async def fact_check_status():
         "gemini_configured": gemini_service.is_configured(),
         "gemini_model": settings.GEMINI_MODEL,
         "web_search_configured": web_search_service.is_configured(),
+        "search_provider": "serpapi",
         "max_claims_to_verify": settings.MAX_CLAIMS_TO_VERIFY,
         "evidence_sources_per_claim": settings.EVIDENCE_SOURCES_PER_CLAIM
     }

@@ -348,6 +348,13 @@ function createEvidenceSection(verification) {
     return section;
 }
 
+// Sanitize string for safe HTML insertion
+function sanitizeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // Create evidence item
 function createEvidenceItem(evidence, type) {
     const item = document.createElement('div');
@@ -358,8 +365,8 @@ function createEvidenceItem(evidence, type) {
     const quote = evidence.quote || 'No quote available';
 
     item.innerHTML = `
-        <a href="${url}" target="_blank" rel="noopener noreferrer" class="evidence-source">${title}</a>
-        <p class="evidence-quote">"${quote}"</p>
+        <a href="${sanitizeHTML(url)}" target="_blank" rel="noopener noreferrer" class="evidence-source">${sanitizeHTML(title)}</a>
+        <p class="evidence-quote">"${sanitizeHTML(quote)}"</p>
     `;
 
     return item;

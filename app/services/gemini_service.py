@@ -4,7 +4,7 @@ Gemini API service for LLM-based claim extraction and verification.
 import asyncio
 import json
 from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -25,7 +25,7 @@ class GeminiRateLimiter:
     async def wait_if_needed(self):
         """Wait if rate limit would be exceeded."""
         async with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             minute_ago = now - timedelta(minutes=1)
 
             # Remove timestamps older than 1 minute
@@ -39,7 +39,7 @@ class GeminiRateLimiter:
                     logger.info(f"⏳ Rate limit reached, waiting {wait_seconds:.1f}s")
                     await asyncio.sleep(wait_seconds + 0.5)
 
-            self.request_times.append(datetime.utcnow())
+            self.request_times.append(datetime.now(timezone.utc))
 
 
 class GeminiService:

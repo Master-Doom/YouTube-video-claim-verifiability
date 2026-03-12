@@ -31,14 +31,10 @@ class Settings(BaseSettings):
         description="Gemini API rate limit (requests per minute)"
     )
 
-    # Google Custom Search Configuration
-    GOOGLE_SEARCH_API_KEY: str = Field(
+    # SerpAPI Configuration
+    SERPAPI_API_KEY: str = Field(
         default="",
-        description="Google Custom Search API key"
-    )
-    GOOGLE_SEARCH_CX: str = Field(
-        default="",
-        description="Google Custom Search Engine ID"
+        description="SerpAPI key for web search evidence retrieval"
     )
 
     # Fact-Checking Configuration

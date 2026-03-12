@@ -193,8 +193,8 @@ class ClaimData(BaseModel):
         description="End timestamp in seconds"
     )
     claim_type: str = Field(
-        default="unknown",
-        description="Type of claim (statistic, historical, scientific, etc.)"
+        default="scientific",
+        description="Type of claim (scientific -- this system focuses on scientific claims only)"
     )
     confidence: float = Field(
         default=0.5,

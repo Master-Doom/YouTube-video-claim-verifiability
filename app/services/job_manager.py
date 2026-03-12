@@ -4,7 +4,7 @@ Job manager service for async transcription jobs.
 import uuid
 from enum import Enum
 from typing import Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -37,7 +37,7 @@ class Job:
         self.phase = "transcription"  # Current phase: "transcription" or "fact_checking"
         self.result: Optional[Dict[str, Any]] = None
         self.error: Optional[str] = None
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.completed_at: Optional[datetime] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -105,7 +105,7 @@ class JobManager:
             job.status = JobStatus.COMPLETED
             job.result = result
             job.progress = "Completed"
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
             logger.info(f"Job {job_id} completed successfully")
 
     def fail_job(self, job_id: str, error: str):
@@ -114,12 +114,12 @@ class JobManager:
             job.status = JobStatus.FAILED
             job.error = error
             job.progress = "Failed"
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
             logger.error(f"Job {job_id} failed: {error}")
 
     def cleanup_old_jobs(self, max_age_hours: int = 24):
         """Remove jobs older than max_age_hours."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         to_remove = []
         for job_id, job in self.jobs.items():
             age = (now - job.created_at).total_seconds() / 3600
