@@ -23,7 +23,7 @@ services:
       - TEMP_DIR=/app/temp
       - MODELS_DIR=/app/models
       - WHISPER_MODEL_SIZE_GPU=${WHISPER_MODEL_SIZE_GPU:-large-v3}
-      - WHISPER_MODEL_SIZE_CPU=${WHISPER_MODEL_SIZE_CPU:-large-v3-turbo}
+      - WHISPER_MODEL_SIZE_CPU=${WHISPER_MODEL_SIZE_CPU:-Vinxscribe/biodatlab-whisper-th-medium-faster}
       - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-}
       - MAX_VIDEO_LENGTH_MINUTES=${MAX_VIDEO_LENGTH_MINUTES:-120}
       - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,th}
@@ -68,7 +68,7 @@ services:
       - TEMP_DIR=/app/temp
       - MODELS_DIR=/app/models
       - WHISPER_MODEL_SIZE_GPU=${WHISPER_MODEL_SIZE_GPU:-medium}
-      - WHISPER_MODEL_SIZE_CPU=${WHISPER_MODEL_SIZE_CPU:-large-v3-turbo}
+      - WHISPER_MODEL_SIZE_CPU=${WHISPER_MODEL_SIZE_CPU:-Vinxscribe/biodatlab-whisper-th-medium-faster}
       - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-}
       - MAX_VIDEO_LENGTH_MINUTES=${MAX_VIDEO_LENGTH_MINUTES:-120}
       - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,th}

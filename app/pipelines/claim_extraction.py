@@ -43,9 +43,11 @@ RULES FOR EXTRACTION:
 4. Make each claim:
    - Self-contained (understandable without context)
    - Specific with verifiable scientific details
-   - In the same language as the original statement
+   - Written in {language}
 
-5. Generate a search query that would help verify each claim using scientific sources
+5. Generate a search query (always in English for better search results) to verify each claim
+
+IMPORTANT: Write ALL text fields (claim_text, key_entities) in {language}. The search_query field should always be in English.
 
 OUTPUT FORMAT (JSON):
 {{
@@ -66,6 +68,16 @@ OUTPUT FORMAT (JSON):
 Return at most {max_claims} of the most significant and verifiable scientific claims.
 Prioritize claims with specific measurements, named scientific concepts, or research references that are easier to verify.
 """
+
+
+def detect_transcript_language(segments: List[Dict]) -> str:
+    """
+    Detect if transcript is Thai or English by checking for Thai Unicode characters.
+    Returns a language name suitable for use in LLM prompts.
+    """
+    text = " ".join(seg.get('text', '') for seg in segments[:30])
+    thai_chars = sum(1 for c in text if '\u0e00' <= c <= '\u0e7f')
+    return "Thai" if thai_chars > 5 else "English"
 
 
 def format_transcript_for_extraction(segments: List[Dict]) -> str:
@@ -138,10 +150,14 @@ async def extract_claims(
         logger.warning(f"⚠️ Transcript too long ({len(transcript_text)} chars), truncating")
         transcript_text = transcript_text[:max_transcript_chars] + "\n\n[TRANSCRIPT TRUNCATED]"
 
-    # Build prompt
+    # Detect language and build prompt
+    language = detect_transcript_language(segments)
+    logger.info(f"🌐 Detected transcript language: {language}")
+
     prompt = CLAIM_EXTRACTION_PROMPT.format(
         transcript=transcript_text,
-        max_claims=max_claims
+        max_claims=max_claims,
+        language=language
     )
 
     try:
@@ -173,7 +189,8 @@ async def extract_claims(
                 'claim_type': str(claim.get('claim_type', 'unknown')),
                 'confidence': min(1.0, max(0.0, float(claim.get('confidence', 0.5)))),
                 'search_query': str(claim.get('search_query', claim.get('claim_text', ''))),
-                'key_entities': claim.get('key_entities', [])
+                'key_entities': claim.get('key_entities', []),
+                'language': language
             }
 
             valid_claims.append(cleaned_claim)

@@ -70,19 +70,37 @@ OUTPUT FORMAT (JSON):
     "caveats": "Important limitations, context, or nuances (if any)"
 }}
 
+IMPORTANT: Write ALL text responses (explanation, key_finding, caveats, and all quote fields) in {language}. Only verdict values ("supported", "refuted", "inconclusive") must remain in English.
+
 Be objective and fair. If the evidence is mixed, acknowledge both sides.
 """
 
 
-NO_EVIDENCE_RESPONSE = {
-    "verdict": "inconclusive",
-    "confidence": 0.0,
-    "explanation": "No evidence sources were found to verify this claim. The claim cannot be evaluated without supporting or contradicting evidence.",
-    "supporting_evidence": [],
-    "counter_evidence": [],
-    "key_finding": "Unable to find relevant evidence for verification",
-    "caveats": "This claim requires manual verification as automated evidence retrieval did not return results."
+_NO_EVIDENCE_MESSAGES = {
+    "Thai": {
+        "explanation": "ไม่พบแหล่งหลักฐานเพื่อยืนยันข้อเรียกร้องนี้ ไม่สามารถประเมินได้โดยไม่มีหลักฐานสนับสนุนหรือโต้แย้ง",
+        "key_finding": "ไม่พบหลักฐานที่เกี่ยวข้องสำหรับการยืนยัน",
+        "caveats": "ข้อเรียกร้องนี้ต้องการการตรวจสอบด้วยตนเอง เนื่องจากระบบค้นหาหลักฐานอัตโนมัติไม่พบผลลัพธ์"
+    },
+    "English": {
+        "explanation": "No evidence sources were found to verify this claim. The claim cannot be evaluated without supporting or contradicting evidence.",
+        "key_finding": "Unable to find relevant evidence for verification",
+        "caveats": "This claim requires manual verification as automated evidence retrieval did not return results."
+    }
 }
+
+
+def _make_no_evidence_response(language: str = "English") -> dict:
+    msgs = _NO_EVIDENCE_MESSAGES.get(language, _NO_EVIDENCE_MESSAGES["English"])
+    return {
+        "verdict": "inconclusive",
+        "confidence": 0.0,
+        "explanation": msgs["explanation"],
+        "supporting_evidence": [],
+        "counter_evidence": [],
+        "key_finding": msgs["key_finding"],
+        "caveats": msgs["caveats"]
+    }
 
 
 def format_evidence_for_prompt(evidence: List[Dict]) -> str:
@@ -147,11 +165,12 @@ async def verify_claim(
     speaker = claim.get('speaker', 'Unknown')
     start_time = claim.get('start_time', 0)
     claim_type = claim.get('claim_type', 'unknown')
+    language = claim.get('language', 'English')
 
     # Handle case with no evidence
     if not evidence:
         logger.warning(f"⚠️ No evidence for claim: {claim_text[:50]}...")
-        result = NO_EVIDENCE_RESPONSE.copy()
+        result = _make_no_evidence_response(language)
         result['claim'] = claim
         return result
 
@@ -165,7 +184,8 @@ async def verify_claim(
         speaker=speaker,
         timestamp=timestamp,
         claim_type=claim_type,
-        evidence_text=evidence_text
+        evidence_text=evidence_text,
+        language=language
     )
 
     try:

@@ -86,6 +86,7 @@ class Transcriber:
                 language=language,
                 beam_size=5,
                 vad_filter=True,  # Voice activity detection
+                condition_on_previous_text=False,  # Prevents hallucinations/language mixing
                 vad_parameters=dict(
                     min_silence_duration_ms=500
                 )
