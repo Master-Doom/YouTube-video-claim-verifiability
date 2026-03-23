@@ -96,6 +96,11 @@ FROM build-${COMPUTE_TYPE} AS final
 ARG COMPUTE_TYPE
 ENV DOCKER_COMPUTE_TYPE=${COMPUTE_TYPE}
 
+# IMPORTANT: Add non-root user for Hugging Face Spaces
+RUN useradd -m -u 1000 user
+RUN chown -R user:user /app
+USER user
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
