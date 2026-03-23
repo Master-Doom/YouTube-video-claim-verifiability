@@ -56,6 +56,10 @@ class Settings(BaseSettings):
         default="",
         description="Path to YouTube cookies.txt file for authentication (bypasses bot detection)"
     )
+    YOUTUBE_COOKIES_BASE64: str = Field(
+        default="",
+        description="Base64-encoded YouTube cookies.txt content (for HF Spaces secrets)"
+    )
 
     # Directory Configuration
     TEMP_DIR: str = Field(

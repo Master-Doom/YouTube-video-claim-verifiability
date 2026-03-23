@@ -1,6 +1,7 @@
 """
 YouTube audio extraction pipeline.
 """
+import base64
 import os
 import yt_dlp
 from typing import Tuple, Dict
@@ -18,6 +19,25 @@ class AudioExtractor:
     def __init__(self):
         """Initialize the audio extractor."""
         ensure_dir(settings.TEMP_DIR)
+        self._cookies_path = self._resolve_cookies_path()
+
+    def _resolve_cookies_path(self) -> str:
+        """Resolve cookies file path, decoding base64 secret if provided."""
+        # Priority 1: base64-encoded secret (for HF Spaces)
+        if settings.YOUTUBE_COOKIES_BASE64:
+            cookies_path = os.path.join(settings.TEMP_DIR, "yt_cookies.txt")
+            try:
+                decoded = base64.b64decode(settings.YOUTUBE_COOKIES_BASE64)
+                with open(cookies_path, "wb") as f:
+                    f.write(decoded)
+                logger.info("YouTube cookies decoded from YOUTUBE_COOKIES_BASE64")
+                return cookies_path
+            except Exception as e:
+                logger.warning(f"Failed to decode YOUTUBE_COOKIES_BASE64: {e}")
+        # Priority 2: explicit file path
+        if settings.YOUTUBE_COOKIES_PATH and os.path.exists(settings.YOUTUBE_COOKIES_PATH):
+            return settings.YOUTUBE_COOKIES_PATH
+        return ""
 
     def download_and_extract(self, youtube_url: str) -> Tuple[str, Dict]:
         """
@@ -73,9 +93,9 @@ class AudioExtractor:
             }
 
             # Add cookies file if configured (for bypassing bot detection)
-            if settings.YOUTUBE_COOKIES_PATH and os.path.exists(settings.YOUTUBE_COOKIES_PATH):
-                ydl_opts['cookiefile'] = settings.YOUTUBE_COOKIES_PATH
-                logger.info(f"Using YouTube cookies from: {settings.YOUTUBE_COOKIES_PATH}")
+            if self._cookies_path:
+                ydl_opts['cookiefile'] = self._cookies_path
+                logger.info(f"Using YouTube cookies from: {self._cookies_path}")
 
             # Download and extract metadata
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
