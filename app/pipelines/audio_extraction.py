@@ -69,6 +69,9 @@ class AudioExtractor:
                 'no_warnings': False,
                 'extract_flat': False,
                 'postprocessor_args': ['-ar', '16000', '-ac', '1'],
+                # Allow yt-dlp to download the n-challenge solver script from GitHub
+                # (Deno is the runtime; this script is what actually solves the challenge)
+                'remote_components': ['ejs:github'],
             }
 
             # Attempt 1: web client with cookies — Deno (installed in Docker) solves the n-challenge
