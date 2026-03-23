@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     git \
     wget \
+    unzip \
     pkg-config \
     build-essential \
     python3-dev \
@@ -34,6 +35,9 @@ RUN apt-get update && apt-get install -y \
     libavutil-dev \
     libswscale-dev \
     libswresample-dev \
+    && wget -q "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip" -O /tmp/deno.zip \
+    && unzip /tmp/deno.zip -d /usr/local/bin/ \
+    && rm /tmp/deno.zip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -64,6 +68,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     git \
     wget \
+    unzip \
     pkg-config \
     build-essential \
     python3-dev \
@@ -73,6 +78,9 @@ RUN apt-get update && apt-get install -y \
     libavutil-dev \
     libswscale-dev \
     libswresample-dev \
+    && wget -q "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip" -O /tmp/deno.zip \
+    && unzip /tmp/deno.zip -d /usr/local/bin/ \
+    && rm /tmp/deno.zip \
     && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/bin/python3.10 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip

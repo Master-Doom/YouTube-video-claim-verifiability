@@ -71,21 +71,21 @@ class AudioExtractor:
                 'postprocessor_args': ['-ar', '16000', '-ac', '1'],
             }
 
-            # Attempt 1: tv_embedded without cookies — bypasses bot detection on server/data center IPs
-            attempts = [
-                ('tv_embedded (no cookies)', {
-                    **base_opts,
-                    'extractor_args': {'youtube': {'player_client': ['tv_embedded']}},
-                }),
-            ]
-
-            # Attempt 2: web client with cookies — fallback when cookies are configured
+            # Attempt 1: web client with cookies — Deno (installed in Docker) solves the n-challenge
+            # Cookies are required from data center IPs to bypass YouTube's bot detection
+            attempts = []
             if self._cookies_path:
                 attempts.append(('web (with cookies)', {
                     **base_opts,
                     'extractor_args': {'youtube': {'player_client': ['web']}},
                     'cookiefile': self._cookies_path,
                 }))
+
+            # Attempt 2: web client without cookies — fallback for public videos
+            attempts.append(('web (no cookies)', {
+                **base_opts,
+                'extractor_args': {'youtube': {'player_client': ['web']}},
+            }))
 
             info = None
             last_error = None
