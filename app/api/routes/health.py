@@ -2,6 +2,7 @@
 Health check endpoint.
 """
 from fastapi import APIRouter
+from fastapi.responses import RedirectResponse
 from app.models.schemas import HealthResponse
 from app.services.model_loader import get_model_status
 from app.utils.logger import setup_logger
@@ -31,18 +32,5 @@ async def health_check():
 
 @router.get("/")
 async def root():
-    """
-    Root endpoint redirect information.
-
-    Returns:
-        Dictionary with API information
-    """
-    return {
-        "message": "YouTube Transcription Service API",
-        "version": "1.0.0",
-        "endpoints": {
-            "health": "/health",
-            "transcribe": "/api/transcribe",
-            "ui": "/index.html"
-        }
-    }
+    """Redirect root to the frontend UI."""
+    return RedirectResponse(url="/index.html")
