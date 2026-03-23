@@ -77,11 +77,11 @@ class AudioExtractor:
                     '-ar', str(16000),  # Sample rate
                     '-ac', '1',  # Mono
                 ],
-                # Enhanced options for YouTube compatibility (iOS client works best for data center IPs)
+                # Enhanced options for YouTube compatibility
+                # tv_embedded is designed for server/embedded use and bypasses bot detection on data center IPs
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['ios', 'android', 'web'],  # iOS first for data center IPs (RunPod, etc.)
-                        'skip': ['hls', 'dash'],  # Skip problematic streaming formats
+                        'player_client': ['tv_embedded', 'ios'],
                     }
                 },
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
