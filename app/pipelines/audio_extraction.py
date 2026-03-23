@@ -43,6 +43,10 @@ class AudioExtractor:
         """
         Download YouTube video and extract audio.
 
+        Tries two strategies in order:
+        1. tv_embedded client without cookies (reliable from data center IPs)
+        2. web client with cookies (fallback, only if cookies are configured)
+
         Args:
             youtube_url: YouTube video URL
 
@@ -50,81 +54,77 @@ class AudioExtractor:
             Tuple of (audio_file_path, metadata_dict)
 
         Raises:
-            Exception: If download or extraction fails
+            Exception: If all download attempts fail
         """
         try:
             logger.info(f"Starting download from: {youtube_url}")
 
-            # Generate unique output filename
-            output_path = get_unique_filename(
-                settings.TEMP_DIR,
-                "yt_audio_",
-                "wav"
-            )
+            output_path = get_unique_filename(settings.TEMP_DIR, "yt_audio_", "wav")
 
-            # Configure yt-dlp options with enhanced YouTube compatibility
-            ydl_opts = {
-                'format': 'bestaudio[ext=m4a]/bestaudio/best',  # Prefer m4a, fallback to any audio or combined
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'wav',
-                }],
+            base_opts = {
+                'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}],
                 'outtmpl': output_path.replace('.wav', ''),
                 'quiet': False,
                 'no_warnings': False,
                 'extract_flat': False,
-                'postprocessor_args': [
-                    '-ar', str(16000),  # Sample rate
-                    '-ac', '1',  # Mono
-                ],
-                # Enhanced options for YouTube compatibility
-                # tv_embedded is designed for server/embedded use and bypasses bot detection on data center IPs
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['tv_embedded', 'ios'],
-                    }
-                },
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'http_headers': {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-us,en;q=0.5',
-                    'Sec-Fetch-Mode': 'navigate',
-                },
+                'postprocessor_args': ['-ar', '16000', '-ac', '1'],
             }
 
-            # Add cookies file if configured (for bypassing bot detection)
+            # Attempt 1: tv_embedded without cookies — bypasses bot detection on server/data center IPs
+            attempts = [
+                ('tv_embedded (no cookies)', {
+                    **base_opts,
+                    'extractor_args': {'youtube': {'player_client': ['tv_embedded']}},
+                }),
+            ]
+
+            # Attempt 2: web client with cookies — fallback when cookies are configured
             if self._cookies_path:
-                ydl_opts['cookiefile'] = self._cookies_path
-                logger.info(f"Using YouTube cookies from: {self._cookies_path}")
+                attempts.append(('web (with cookies)', {
+                    **base_opts,
+                    'extractor_args': {'youtube': {'player_client': ['web']}},
+                    'cookiefile': self._cookies_path,
+                }))
 
-            # Download and extract metadata
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.info("Extracting video information...")
-                info = ydl.extract_info(youtube_url, download=False)
+            info = None
+            last_error = None
 
-                # Check video duration
-                duration = info.get('duration', 0)
-                if duration > settings.max_video_length_seconds:
-                    raise ValueError(
-                        f"{ERROR_VIDEO_TOO_LONG}: {duration/60:.1f} minutes "
-                        f"(max: {settings.MAX_VIDEO_LENGTH_MINUTES} minutes)"
-                    )
+            for label, opts in attempts:
+                try:
+                    logger.info(f"Download attempt: {label}")
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(youtube_url, download=False)
 
-                logger.info(f"Video title: {info.get('title', 'Unknown')}")
-                logger.info(f"Duration: {duration/60:.1f} minutes")
+                        duration = info.get('duration', 0)
+                        if duration > settings.max_video_length_seconds:
+                            raise ValueError(
+                                f"{ERROR_VIDEO_TOO_LONG}: {duration/60:.1f} minutes "
+                                f"(max: {settings.MAX_VIDEO_LENGTH_MINUTES} minutes)"
+                            )
 
-                # Download audio
-                logger.info("Downloading audio...")
-                ydl.download([youtube_url])
+                        logger.info(f"Video title: {info.get('title', 'Unknown')}")
+                        logger.info(f"Duration: {duration/60:.1f} minutes")
+                        logger.info("Downloading audio...")
+                        ydl.download([youtube_url])
+                    break  # success — stop trying
+                except ValueError:
+                    raise
+                except Exception as e:
+                    logger.warning(f"Attempt '{label}' failed: {e}")
+                    last_error = e
+                    info = None
 
-            # Prepare metadata
+            if info is None:
+                raise last_error or Exception("All download attempts failed")
+
             metadata = {
                 'title': info.get('title', 'Unknown'),
-                'duration': duration,
+                'duration': info.get('duration', 0),
                 'uploader': info.get('uploader', 'Unknown'),
                 'upload_date': info.get('upload_date', 'Unknown'),
                 'view_count': info.get('view_count', 0),
-                'description': info.get('description', '')[:500],  # Limit description length
+                'description': info.get('description', '')[:500],
             }
 
             logger.info(f"Successfully extracted audio to: {output_path}")
