@@ -1,6 +1,6 @@
 ---
-title: Yt Scientific Factcheck
-emoji: 📊
+title: YouTubeScientificFactCheck
+emoji: 📈
 colorFrom: indigo
 colorTo: gray
 sdk: docker
