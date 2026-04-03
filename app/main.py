@@ -25,7 +25,9 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting YouTube Transcription Service...")
-    logger.info(f"Whisper model: {settings.WHISPER_MODEL_SIZE}")
+    import torch
+    _device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.info(f"Whisper model: {settings.get_whisper_model_size(_device)} (device: {_device})")
     logger.info(f"Supported languages: {settings.supported_languages_list}")
 
     try:

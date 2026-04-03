@@ -5,8 +5,8 @@ import asyncio
 import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta, timezone
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google import genai
+from google.genai import types
 
 from app.utils.logger import setup_logger
 from app.core.config import settings
@@ -46,7 +46,8 @@ class GeminiService:
     """Service for interacting with Google Gemini API."""
 
     def __init__(self):
-        self.model = None
+        self.client = None
+        self._safety_settings = None
         self.rate_limiter = GeminiRateLimiter(settings.GEMINI_REQUESTS_PER_MINUTE)
         self._initialized = False
 
@@ -58,24 +59,14 @@ class GeminiService:
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not configured")
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-        # Configure safety settings to be less restrictive for fact-checking
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        }
-
-        self.model = genai.GenerativeModel(
-            settings.GEMINI_MODEL,
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json",
-                temperature=0.1,  # Low temperature for consistent outputs
-            ),
-            safety_settings=safety_settings,
-        )
+        self._safety_settings = [
+            types.SafetySetting(category='HARM_CATEGORY_HARASSMENT',         threshold='BLOCK_ONLY_HIGH'),
+            types.SafetySetting(category='HARM_CATEGORY_HATE_SPEECH',        threshold='BLOCK_ONLY_HIGH'),
+            types.SafetySetting(category='HARM_CATEGORY_SEXUALLY_EXPLICIT',  threshold='BLOCK_ONLY_HIGH'),
+            types.SafetySetting(category='HARM_CATEGORY_DANGEROUS_CONTENT',  threshold='BLOCK_ONLY_HIGH'),
+        ]
 
         self._initialized = True
         logger.info(f"✅ Gemini service initialized with model: {settings.GEMINI_MODEL}")
@@ -103,10 +94,14 @@ class GeminiService:
 
                 logger.debug(f"🤖 Sending request to Gemini (attempt {attempt + 1})")
 
-                # Run synchronous API call in thread pool
-                response = await asyncio.to_thread(
-                    self.model.generate_content,
-                    prompt
+                response = await self.client.aio.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                        safety_settings=self._safety_settings,
+                    )
                 )
 
                 # Check for blocked response
@@ -168,21 +163,14 @@ class GeminiService:
         """
         self.initialize()
 
-        # Use a model without JSON constraint for text generation
-        text_model = genai.GenerativeModel(
-            settings.GEMINI_MODEL,
-            generation_config=genai.GenerationConfig(
-                temperature=0.3,
-            ),
-        )
-
         for attempt in range(max_retries):
             try:
                 await self.rate_limiter.wait_if_needed()
 
-                response = await asyncio.to_thread(
-                    text_model.generate_content,
-                    prompt
+                response = await self.client.aio.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(temperature=0.3)
                 )
 
                 if response.text:
