@@ -6,7 +6,7 @@
 #   GPU: docker build --build-arg COMPUTE_TYPE=gpu -t youtube-transcription:gpu .
 
 # Global ARG - must be declared before any FROM to use in FROM instructions
-ARG COMPUTE_TYPE=gpu
+ARG COMPUTE_TYPE=cpu
 
 # =============================================================================
 # CPU Stage - Uses python:3.10-slim (Python already included)
